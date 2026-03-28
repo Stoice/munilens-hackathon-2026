@@ -62,7 +62,7 @@ export default function App() {
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <Loader2 className="w-12 h-12 text-blue-600 animate-spin" />
+        <Loader2 className="w-12 h-12 animate-spin" style={{color: '#1a6fa8'}} />
       </div>
     );
   }
@@ -72,21 +72,22 @@ export default function App() {
       <Toaster position="top-right" richColors />
       <div className="min-h-screen bg-gray-50 flex flex-col">
         {/* Navigation */}
-        <nav className="bg-white border-b border-gray-200 px-4 py-3 sticky top-0 z-50">
+        <nav className="bg-white border-b px-4 py-3 sticky top-0 z-50" style={{borderColor: '#d9c9a8'}}>
           <div className="max-w-7xl mx-auto flex items-center justify-between">
             <Link to="/" className="flex items-center space-x-2">
-              <div className="w-10 h-10 bg-blue-600 rounded-xl flex items-center justify-center shadow-lg shadow-blue-200">
+              <div className="w-10 h-10 rounded-xl flex items-center justify-center shadow-lg" style={{backgroundColor: '#1a6fa8', boxShadow: '0 0 20px rgba(26, 111, 168, 0.3)'}}>
                 <Layout className="text-white w-6 h-6" />
               </div>
-              <span className="text-xl font-black text-gray-900 tracking-tight">MuniLens</span>
+              <span className="text-xl font-black tracking-tight" style={{color: '#1a2e5a'}}>MuniLens</span>
             </Link>
 
             <div className="flex items-center space-x-6">
               {user && (
-                <div className="flex bg-gray-100 p-1 rounded-lg">
+                <div className="p-1 rounded-lg" style={{backgroundColor: '#f0f0f0'}}>
                   <Link 
                     to="/report"
-                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${location.pathname === '/report' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                    className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${location.pathname === '/report' ? 'bg-white shadow-sm' : 'hover:opacity-80'}`}
+                    style={{color: location.pathname === '/report' ? '#1a6fa8' : '#9e9e9e'}}
                   >
                     <Camera className="w-4 h-4 inline-block mr-1" />
                     Report
@@ -94,7 +95,8 @@ export default function App() {
                   {user.role === 'admin' && (
                     <Link 
                       to="/dashboard"
-                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${location.pathname === '/dashboard' ? 'bg-white shadow-sm text-blue-600' : 'text-gray-500 hover:text-gray-700'}`}
+                      className={`px-3 py-1.5 rounded-md text-sm font-medium transition-all ${location.pathname === '/dashboard' ? 'bg-white shadow-sm' : 'hover:opacity-80'}`}
+                      style={{color: location.pathname === '/dashboard' ? '#1a6fa8' : '#9e9e9e'}}
                     >
                       <BarChart3 className="w-4 h-4 inline-block mr-1" />
                       Dashboard
@@ -133,13 +135,13 @@ export default function App() {
         </main>
 
         {/* Footer */}
-        <footer className="bg-white border-t border-gray-200 py-8 px-4">
+        <footer className="bg-white py-8 px-4" style={{borderTopColor: '#d9c9a8', borderTopWidth: '1px'}}>
           <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
-            <div className="flex items-center space-x-2 text-gray-400">
+            <div className="flex items-center space-x-2" style={{color: '#9e9e9e'}}>
               <Info className="w-4 h-4" />
               <span className="text-sm">MICT SETA 2026 Hackathon Submission</span>
             </div>
-            <p className="text-sm text-gray-500">© 2026 MuniLens. Built for South African Municipalities.</p>
+            <p className="text-sm" style={{color: '#9e9e9e'}}>© 2026 MuniLens. Built for South African Municipalities.</p>
           </div>
         </footer>
       </div>
@@ -150,10 +152,10 @@ export default function App() {
 function Home({ user }: { user: UserProfile | null }) {
   return (
     <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-8 animate-in fade-in duration-500">
-      <h1 className="text-5xl md:text-7xl font-black text-gray-900 leading-tight">
-        Fix your city with <span className="text-blue-600">AI.</span>
+      <h1 className="text-5xl md:text-7xl font-black leading-tight" style={{color: '#1a2e5a'}}>
+        Fix your city with <span style={{color: '#1a6fa8'}}>AI.</span>
       </h1>
-      <p className="text-xl text-gray-600 max-w-2xl mx-auto">
+      <p className="text-xl max-w-2xl mx-auto" style={{color: '#9e9e9e'}}>
         MuniLens uses computer vision to instantly classify municipal faults. 
         Report potholes, leaks, and outages in seconds.
       </p>
@@ -162,19 +164,19 @@ function Home({ user }: { user: UserProfile | null }) {
         <div className="pt-8">
           <Link 
             to="/report" 
-            className="px-8 py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-blue-700 transition-all shadow-xl shadow-blue-200"
+            className="px-8 py-4 text-white rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl hover:opacity-90" style={{backgroundColor: '#1a6fa8', boxShadow: '0 0 30px rgba(26, 111, 168, 0.3)'}}
           >
             Start Reporting Now
           </Link>
         </div>
       ) : (
-        <p className="text-sm text-gray-400 font-bold uppercase tracking-widest">Sign in to start reporting</p>
+        <p className="text-sm font-bold uppercase tracking-widest" style={{color: '#9e9e9e'}}>Sign in to start reporting</p>
       )}
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12">
-        <Feature icon={<Camera className="text-blue-500" />} title="Snap a Photo" desc="AI identifies the fault type instantly using computer vision." />
-        <Feature icon={<Layout className="text-purple-500" />} title="Auto-Route" desc="Reports go directly to the correct municipal department." />
-        <Feature icon={<BarChart3 className="text-green-500" />} title="Smart Insights" desc="Managers get AI-written summaries to prioritize repairs." />
+        <Feature icon={<Camera className="w-8 h-8" style={{color: '#1a6fa8'}} />} title="Snap a Photo" desc="AI identifies the fault type instantly using computer vision." />
+        <Feature icon={<Layout className="w-8 h-8" style={{color: '#00b4a6'}} />} title="Auto-Route" desc="Reports go directly to the correct municipal department." />
+        <Feature icon={<BarChart3 className="w-8 h-8" style={{color: '#4caf50'}} />} title="Smart Insights" desc="Managers get AI-written summaries to prioritize repairs." />
       </div>
     </div>
   );
@@ -182,12 +184,12 @@ function Home({ user }: { user: UserProfile | null }) {
 
 function Feature({ icon, title, desc }: { icon: React.ReactNode, title: string, desc: string }) {
   return (
-    <div className="p-6 bg-white rounded-2xl shadow-sm border border-gray-100 text-center space-y-4">
-      <div className="w-12 h-12 bg-gray-50 rounded-xl flex items-center justify-center mx-auto">
+    <div className="p-6 bg-white rounded-2xl shadow-sm text-center space-y-4" style={{borderColor: '#d9c9a8', borderWidth: '1px'}}>
+      <div className="w-12 h-12 rounded-xl flex items-center justify-center mx-auto" style={{backgroundColor: '#f0f0f0'}}>
         {icon}
       </div>
-      <h3 className="text-lg font-bold text-gray-900">{title}</h3>
-      <p className="text-sm text-gray-500">{desc}</p>
+      <h3 className="text-lg font-bold" style={{color: '#1a2e5a'}}>{title}</h3>
+      <p className="text-sm" style={{color: '#9e9e9e'}}>{desc}</p>
     </div>
   );
 }

@@ -63,7 +63,7 @@ export default function UserManagement() {
   if (loading) {
     return (
       <div className="flex items-center justify-center p-12">
-        <Loader2 className="w-8 h-8 text-blue-500 animate-spin" />
+        <Loader2 className="w-8 h-8 animate-spin" style={{color: '#1a6fa8'}} />
       </div>
     );
   }
@@ -71,8 +71,8 @@ export default function UserManagement() {
   return (
     <div className="space-y-6">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <h2 className="text-2xl font-bold text-gray-900 flex items-center gap-2">
-          <Users className="w-6 h-6 text-blue-600" />
+        <h2 className="text-2xl font-bold flex items-center gap-2" style={{color: '#1a2e5a'}}>
+          <Users className="w-6 h-6" style={{color: '#1a6fa8'}} />
           User Management
         </h2>
         <div className="relative">

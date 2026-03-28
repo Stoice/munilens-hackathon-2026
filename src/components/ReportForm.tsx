@@ -239,9 +239,9 @@ export default function ReportForm() {
     switch (imp) {
       case 'Critical': return 'bg-red-100 text-red-700 border border-red-200';
       case 'High': return 'bg-orange-100 text-orange-700 border border-orange-200';
-      case 'Medium': return 'bg-blue-100 text-blue-700 border border-blue-200';
+      case 'Medium': return 'bg-teal-500 text-white border border-teal-500';
       case 'Low': return 'bg-gray-100 text-gray-700 border border-gray-200';
-      default: return 'bg-blue-100 text-blue-700 border border-blue-200';
+      default: return 'bg-teal-500 text-white border border-teal-500';
     }
   };
 
@@ -274,35 +274,35 @@ export default function ReportForm() {
         </div>
 
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="bg-gray-50 px-4 py-2 border-b border-gray-100 flex justify-between items-center">
-            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Official Feedback</span>
-            <span className="text-[10px] font-mono text-blue-600 font-bold">
+            <div className="px-4 py-2 flex justify-between items-center" style={{backgroundColor: '#f0f0f0', borderBottomColor: '#d9c9a8', borderBottomWidth: '1px'}}>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>Official Feedback</span>
+              <span className="text-[10px] font-mono font-bold" style={{color: '#1a6fa8'}}>
               REF: {submittedReportId?.slice(-8).toUpperCase()}
             </span>
           </div>
           <div className="p-4 space-y-4">
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-1">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Category</p>
-                <p className="text-sm font-bold text-gray-900">{classification?.category}</p>
+                <p className="text-[8px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>Category</p>
+                <p className="text-sm font-bold" style={{color: '#1a2e5a'}}>{classification?.category}</p>
               </div>
               <div className="space-y-1">
-                <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Urgency</p>
+                <p className="text-[8px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>Urgency</p>
                 <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase tracking-wider ${getImportanceColor(classification?.importance || 'Medium')}`}>
                   {classification?.importance}
                 </span>
               </div>
             </div>
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Routed To</p>
-              <p className="text-sm font-bold text-gray-900 flex items-center">
-                <ShieldAlert className="w-3 h-3 mr-1.5 text-blue-500" />
+              <p className="text-[8px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>Routed To</p>
+              <p className="text-sm font-bold flex items-center" style={{color: '#1a2e5a'}}>
+                <ShieldAlert className="w-3 h-3 mr-1.5" style={{color: '#1a6fa8'}} />
                 {classification?.routedTo}
               </p>
             </div>
             <div className="space-y-1">
-              <p className="text-[8px] font-black text-gray-400 uppercase tracking-widest">Estimated Solution</p>
-              <p className="text-sm font-bold text-blue-600 flex items-center">
+              <p className="text-[8px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>Estimated Solution</p>
+              <p className="text-sm font-bold flex items-center" style={{color: '#1a6fa8'}}>
                 <Loader2 className="w-3 h-3 mr-1.5 animate-spin-slow" />
                 {classification?.estimatedSolution}
               </p>
@@ -318,7 +318,7 @@ export default function ReportForm() {
             setDescription('');
             setSubmittedReportId(null);
           }}
-          className="w-full py-4 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-700 transition-all active:scale-95"
+          className="w-full py-4 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl transition-all active:scale-95 hover:opacity-90" style={{backgroundColor: '#1a6fa8'}}
         >
           Report Another Issue
         </button>
@@ -330,29 +330,29 @@ export default function ReportForm() {
     <div className="max-w-md mx-auto p-4 space-y-6 overflow-y-auto max-h-[calc(100vh-120px)] custom-scrollbar">
       <div className="flex items-center justify-between">
         <div className="flex flex-col">
-          <h1 className="text-2xl font-black text-blue-600 tracking-tighter uppercase italic">MuniLens</h1>
-          <span className="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Field Unit v1.0</span>
+          <h1 className="text-2xl font-black tracking-tighter uppercase italic" style={{color: '#1a6fa8'}}>MuniLens</h1>
+          <span className="text-[10px] font-bold uppercase tracking-widest" style={{color: '#9e9e9e'}}>Field Unit v1.0</span>
         </div>
         <div className="flex flex-col items-end space-y-1">
-          <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest text-gray-500">
+          <div className="flex items-center space-x-2 text-[10px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>
             <MapPin className={`w-3 h-3 ${location ? (accuracy && accuracy < 50 ? 'text-green-500' : 'text-amber-500') : 'text-gray-300'}`} />
             <span>{location ? 'GPS_LOCKED' : 'GPS_SEARCHING'}</span>
           </div>
           {accuracy !== null && (
             <div className="flex items-center space-x-1">
-              <div className="h-1 w-16 bg-gray-200 rounded-full overflow-hidden">
+              <div className="h-1 w-16 rounded-full overflow-hidden" style={{backgroundColor: '#d9c9a8'}}>
                 <div className={`h-full transition-all duration-500 ${accuracy < 20 ? 'w-full bg-green-500' : accuracy < 100 ? 'w-2/3 bg-amber-500' : 'w-1/3 bg-red-500'}`} />
               </div>
-              <span className="text-[8px] font-mono text-gray-400">±{Math.round(accuracy)}M</span>
+              <span className="text-[8px] font-mono" style={{color: '#9e9e9e'}}>±{Math.round(accuracy)}M</span>
             </div>
           )}
         </div>
       </div>
 
       {isOffline && (
-        <div className="bg-blue-50 border-l-4 border-blue-400 p-3 flex items-start space-x-3">
-          <AlertCircle className="w-5 h-5 text-blue-400 mt-0.5" />
-          <p className="text-[10px] font-bold text-blue-700 uppercase tracking-wider">
+        <div className="border-l-4 p-3 flex items-start space-x-3" style={{backgroundColor: '#e3f2fd', borderColor: '#1a6fa8'}}>
+          <AlertCircle className="w-5 h-5 mt-0.5" style={{color: '#1a6fa8'}} />
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{color: '#1a6fa8'}}>
             OFFLINE_MODE: Reports will sync automatically.
           </p>
         </div>
@@ -361,7 +361,7 @@ export default function ReportForm() {
       {accuracy !== null && accuracy > 100 && (
         <div className="bg-amber-50 border-l-4 border-amber-400 p-3 flex items-start space-x-3 animate-pulse">
           <AlertCircle className="w-5 h-5 text-amber-400 mt-0.5" />
-          <p className="text-[10px] font-bold text-amber-700 uppercase tracking-wider">
+          <p className="text-[10px] font-bold uppercase tracking-wider" style={{color: '#b45309'}}>
             LOW_GPS_ACCURACY: Move to open area.
           </p>
         </div>
@@ -428,17 +428,17 @@ export default function ReportForm() {
             </div>
           </div>
 
-          <div className="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 space-y-4">
+            <div className="bg-white p-6 rounded-2xl shadow-sm space-y-4" style={{borderColor: '#d9c9a8', borderWidth: '1px'}}>
             <div className="flex items-center justify-between">
-              <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">AI_ANALYSIS</span>
+              <span className="text-[10px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>AI_ANALYSIS</span>
               {loading ? (
-                <Loader2 className="w-5 h-5 text-blue-500 animate-spin" />
+                <Loader2 className="w-5 h-5 animate-spin" style={{color: '#1a6fa8'}} />
               ) : (
                 <div className="flex gap-2">
                   <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider italic ${getImportanceColor(classification?.importance || 'Medium')}`}>
                     {classification?.importance}
                   </span>
-                  <span className="px-3 py-1 bg-blue-600 text-white rounded-lg text-[10px] font-black uppercase tracking-wider italic">
+                  <span className="px-3 py-1 text-white rounded-lg text-[10px] font-black uppercase tracking-wider italic" style={{backgroundColor: '#1a6fa8'}}>
                     {classification?.category}
                   </span>
                 </div>
@@ -446,19 +446,19 @@ export default function ReportForm() {
             </div>
 
             <div className="space-y-2">
-              <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <label className="text-[10px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>
                 Detected Address
               </label>
-              <div className="flex items-start gap-2 p-3 bg-gray-50 rounded-xl border border-gray-100">
-                <MapPin className="w-4 h-4 text-blue-500 mt-0.5 flex-shrink-0" />
-                <p className="text-xs font-medium text-gray-700 leading-tight">
+              <div className="flex items-start gap-2 p-3 rounded-xl" style={{backgroundColor: '#f0f0f0', borderColor: '#d9c9a8', borderWidth: '1px'}}>
+                <MapPin className="w-4 h-4 mt-0.5 flex-shrink-0" style={{color: '#1a6fa8'}} />
+                <p className="text-xs font-medium leading-tight" style={{color: '#1a2e5a'}}>
                   {address || "Locating..."}
                 </p>
               </div>
             </div>
 
             <div className="space-y-2">
-              <label htmlFor="description" className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+              <label htmlFor="description" className="text-[10px] font-black uppercase tracking-widest" style={{color: '#9e9e9e'}}>
                 Field Notes
               </label>
               <textarea
@@ -466,7 +466,7 @@ export default function ReportForm() {
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
                 placeholder="Enter additional details..."
-                className="w-full p-4 bg-gray-50 border border-gray-100 rounded-xl text-sm focus:ring-2 focus:ring-blue-500 outline-none min-h-[120px] resize-none font-medium"
+                className="w-full p-4 rounded-xl text-sm outline-none min-h-[120px] resize-none font-medium focus:ring-2" style={{backgroundColor: '#f0f0f0', borderColor: '#d9c9a8', borderWidth: '1px', color: '#1a2e5a', '--tw-ring-color': '#1a6fa8'} as React.CSSProperties}
               />
             </div>
           </div>
@@ -475,14 +475,14 @@ export default function ReportForm() {
             <button
               onClick={submitReport}
               disabled={loading || !classification}
-              className="w-full py-5 bg-blue-600 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-3 active:scale-95"
+              className="w-full py-5 text-white rounded-2xl font-black uppercase tracking-widest shadow-xl disabled:opacity-50 disabled:cursor-not-allowed transition-all flex items-center justify-center space-x-3 active:scale-95 hover:opacity-90" style={{backgroundColor: '#1a6fa8'}}
             >
               {loading ? <Loader2 className="w-6 h-6 animate-spin" /> : <span>Transmit Report</span>}
             </button>
 
             <button
               onClick={() => setStep('camera')}
-              className="w-full py-3 text-[10px] font-black text-gray-400 uppercase tracking-widest hover:text-gray-600 transition-colors"
+              className="w-full py-3 text-[10px] font-black uppercase tracking-widest transition-colors hover:opacity-80" style={{color: '#9e9e9e'}}
             >
               Discard & Retake
             </button>
@@ -490,7 +490,7 @@ export default function ReportForm() {
         </div>
       )}
 
-      <div className="text-center text-[8px] font-black text-gray-300 uppercase tracking-[0.2em] pt-4">
+      <div className="text-center text-[8px] font-black uppercase tracking-[0.2em] pt-4" style={{color: '#d9c9a8'}}>
         MuniLens • Secure Municipal Uplink
       </div>
     </div>

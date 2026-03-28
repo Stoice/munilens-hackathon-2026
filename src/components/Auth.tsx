@@ -111,8 +111,12 @@ export default function Auth({ user, loading }: AuthProps) {
 
       {/* Auth Modal */}
       {showModal && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md overflow-hidden animate-in zoom-in duration-300 flex flex-col max-h-[90vh]">
+        <>
+          {/* Backdrop */}
+          <div className="fixed inset-0 z-[99] bg-black/50 backdrop-blur-sm" />
+          {/* Modal */}
+          <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[100] w-full max-w-md px-4 animate-in zoom-in duration-300">
+            <div className="bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
             <div className="p-6 border-b border-gray-100 flex items-center justify-between bg-gray-50/50 flex-shrink-0">
               <h2 className="text-xl font-black text-gray-900">
                 {authMode === 'login' ? 'Welcome Back' : 'Create Account'}
@@ -263,8 +267,9 @@ export default function Auth({ user, loading }: AuthProps) {
                 </button>
               </p>
             </form>
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
