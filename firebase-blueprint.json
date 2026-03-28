@@ -1,0 +1,126 @@
+{
+  "entities": {
+    "Report": {
+      "title": "Fault Report",
+      "description": "A report of a municipal infrastructure fault submitted via MuniLens.",
+      "type": "object",
+      "properties": {
+        "id":                { "type": "string",  "description": "Auto-generated Firestore document ID" },
+        "type":              { "type": "string",  "enum": ["Pothole", "Water Leak", "Broken Streetlight", "Illegal Dumping", "Electricity Outage", "Electrical Damage", "Other"] },
+        "importance":        { "type": "string",  "enum": ["Critical", "High", "Medium", "Low"], "description": "AI-determined urgency level" },
+        "status":            { "type": "string",  "enum": ["Open", "In Progress", "Resolved"] },
+        "latitude":          { "type": "number",  "description": "GPS latitude of the fault" },
+        "longitude":         { "type": "number",  "description": "GPS longitude of the fault" },
+        "address":           { "type": "string",  "description": "Reverse-geocoded human-readable address" },
+        "photoUrl":          { "type": "string",  "description": "Base64 JPEG data URI of the captured photo" },
+        "description":       { "type": "string",  "maxLength": 1000, "description": "Optional field notes from the reporter" },
+        "reportedAt":        { "type": "string",  "format": "date-time", "description": "ISO 8601 timestamp of submission" },
+        "reporterUid":       { "type": "string",  "description": "Firebase Auth UID of the submitting user" },
+        "reporterName":      { "type": "string",  "description": "Display name or email of the reporter" },
+        "routedTo":          { "type": "string",  "description": "AI-determined municipal department e.g. Water & Sanitation Department" },
+        "estimatedSolution": { "type": "string",  "description": "AI-estimated resolution timeframe e.g. 24-48 hours" }
+      },
+      "required": [
+        "type",
+        "importance",
+        "status",
+        "latitude",
+        "longitude",
+        "reportedAt",
+        "reporterUid",
+        "reporterName",
+        "routedTo",
+        "estimatedSolution"
+      ],
+      "optional": [
+        "id",
+        "address",
+        "photoUrl",
+        "description"
+      ]
+    },
+
+    "User": {
+      "title": "User Profile",
+      "description": "MuniLens user profile stored in Firestore, created on first sign-in.",
+      "type": "object",
+      "properties": {
+        "uid":          { "type": "string",  "description": "Firebase Auth UID — matches the document ID" },
+        "email":        { "type": "string",  "format": "email" },
+        "role":         { "type": "string",  "enum": ["citizen", "admin"] },
+        "displayName":  { "type": "string",  "description": "User's full name" },
+        "phoneNumber":  { "type": "string",  "description": "Optional phone number shown in admin panel" },
+        "province":     { "type": "string",  "description": "South African province e.g. Western Cape" },
+        "enabled":      { "type": "boolean", "description": "If false, user cannot submit reports" },
+        "id":           { "type": "string",  "description": "Duplicate of uid — required for Firestore rule immutability check" }
+      },
+      "required": [
+        "uid",
+        "id",
+        "email",
+        "role",
+        "enabled"
+      ],
+      "optional": [
+        "displayName",
+        "phoneNumber",
+        "province"
+      ]
+    },
+
+    "StudySummary": {
+      "title": "Study Summary",
+      "description": "AI-generated study content owned by a user (subcollection under /users).",
+      "type": "object",
+      "properties": {
+        "userId":    { "type": "string", "description": "Denormalized owner UID — must match parent /users/{userId}" },
+        "createdAt": { "type": "string", "format": "date-time" },
+        "content":   { "type": "string" },
+        "title":     { "type": "string" }
+      },
+      "required": ["userId", "createdAt", "content", "title"]
+    }
+  },
+
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Collection of all MuniLens fault reports.",
+      "access": {
+        "read":   "Admin, or the citizen who created the report (reporterUid == auth.uid)",
+        "create": "Any authenticated, enabled citizen — validated by isValidReport()",
+        "update": "Admin only",
+        "delete": "Admin only"
+      }
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles. Document ID == uid.",
+      "access": {
+        "read":   "Any authenticated user",
+        "create": "Owner only — role must be citizen unless email is admin email",
+        "update": "Owner (cannot change role or enabled) or admin",
+        "delete": "Owner only"
+      },
+      "subcollections": {
+        "/users/{userId}/studySummaries/{summaryId}": {
+          "schema": "StudySummary",
+          "description": "Private AI study summaries per user.",
+          "access": {
+            "read":   "Owner only",
+            "create": "Owner only — userId field must match path userId",
+            "update": "Owner only — userId field is immutable",
+            "delete": "Owner only"
+          }
+        }
+      }
+    }
+  },
+
+  "notes": {
+    "photoUrl_size": "Base64 JPEG at 0.7 quality for 640x480 is ~80-120KB. Firestore document limit is 1MB — this is safe but consider Firebase Storage for larger images in future.",
+    "admin_email":   "willselepe21@gmail.com is hardcoded as the bootstrap admin in both Firestore rules and the isAdmin() helper.",
+    "importance_vs_blueprint": "The original blueprint was missing: importance, routedTo, estimatedSolution, address, reporterName, and the Electrical Damage enum value. All are now included.",
+    "id_field": "The User entity requires both uid and id fields set to the same value — uid is the semantic owner ID, id is required by the Firestore rule immutability check (request.resource.data.id == resource.data.id)."
+  }
+}
