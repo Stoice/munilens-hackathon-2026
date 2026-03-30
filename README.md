@@ -1,1 +1,1 @@
-# munilens-hackathon-2026
+# MuniLens-hackathon-2026
