@@ -7,10 +7,12 @@ import Auth from './components/Auth';
 import ErrorBoundary from './components/ErrorBoundary';
 import ProtectedRoute from './components/ProtectedRoute';
 import { Unauthorized, Suspended } from './components/StatusPages';
+import CommunityLeaderboard from './components/CommunityLeaderboard';
+import LeaderboardPage from './components/LeaderboardPage';
 import { UserProfile } from './types';
 import { Layout, Camera, BarChart3, Info, Loader2 } from 'lucide-react';
 import { auth, db, onAuthStateChanged } from './firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, query, orderBy, limit, getDocs } from 'firebase/firestore';
 import { handleFirestoreError, OperationType } from './utils/firestoreErrorHandler';
 
 export default function App() {
@@ -112,7 +114,8 @@ export default function App() {
         {/* Main Content */}
         <main className="flex-grow">
           <Routes>
-            <Route path="/" element={<Home user={user} />} />
+            <Route path="/" element={<Home user={user} navigate={navigate} />} />
+            <Route path="/leaderboard" element={<LeaderboardPage currentUserId={user?.uid} />} />
             <Route path="/unauthorized" element={<Unauthorized />} />
             <Route path="/suspended" element={<Suspended />} />
             <Route 
@@ -149,35 +152,102 @@ export default function App() {
   );
 }
 
-function Home({ user }: { user: UserProfile | null }) {
-  return (
-    <div className="max-w-4xl mx-auto px-4 py-20 text-center space-y-8 animate-in fade-in duration-500">
-      <h1 className="text-5xl md:text-7xl font-black leading-tight" style={{color: '#1a2e5a'}}>
-        Fix your city with <span style={{color: '#1a6fa8'}}>AI.</span>
-      </h1>
-      <p className="text-xl max-w-2xl mx-auto" style={{color: '#9e9e9e'}}>
-        MuniLens uses computer vision to instantly classify municipal faults. 
-        Report potholes, leaks, and outages in seconds.
-      </p>
-      
-      {user ? (
-        <div className="pt-8">
-          <Link 
-            to="/report" 
-            className="px-8 py-4 text-white rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl hover:opacity-90" style={{backgroundColor: '#1a6fa8', boxShadow: '0 0 30px rgba(26, 111, 168, 0.3)'}}
-          >
-            Start Reporting Now
-          </Link>
-        </div>
-      ) : (
-        <p className="text-sm font-bold uppercase tracking-widest" style={{color: '#9e9e9e'}}>Sign in to start reporting</p>
-      )}
+function Home({ user, navigate }: { user: UserProfile | null; navigate: ReturnType<typeof useNavigate> }) {
+  const location = useLocation();
+  const [reports, setReports] = useState<any[]>([]);
+  const [loadingReports, setLoadingReports] = useState(true);
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-12">
+  const fetchReports = async () => {
+    setLoadingReports(true);
+    try {
+      // Try fetching without orderBy first to check if data exists
+      let reportsQuery;
+      try {
+        // Try with reportedAt first (what reports actually use)
+        reportsQuery = query(
+          collection(db, 'reports'),
+          orderBy('reportedAt', 'desc'),
+          limit(1000)
+        );
+      } catch (err) {
+        console.warn('[Leaderboard] reportedAt ordering failed, trying without order:', err);
+        // Fallback: fetch without ordering
+        reportsQuery = query(
+          collection(db, 'reports'),
+          limit(1000)
+        );
+      }
+
+      const snapshot = await getDocs(reportsQuery);
+      const allReports = snapshot.docs.map(doc => {
+        const data = doc.data() as any;
+        return {
+          id: doc.id,
+          ...data,
+        };
+      });
+      console.log(`[Leaderboard] Fetched ${allReports.length} reports from Firestore`);
+      if (allReports.length > 0) {
+        console.log('[Leaderboard] Sample report structure:', JSON.stringify(allReports[0], null, 2));
+      }
+      setReports(allReports);
+    } catch (error) {
+      console.error('[Leaderboard] Fetch error:', error);
+      handleFirestoreError(error, OperationType.GET, 'reports');
+    } finally {
+      setLoadingReports(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchReports();
+  }, [location.pathname]); // Refetch when navigating to home
+
+  return (
+    <div className="max-w-4xl mx-auto px-4 py-20 space-y-12 animate-in fade-in duration-500">
+      {/* Hero Section */}
+      <div className="text-center space-y-8">
+        <h1 className="text-5xl md:text-7xl font-black leading-tight" style={{color: '#1a2e5a'}}>
+          Fix your city with <span style={{color: '#1a6fa8'}}>AI.</span>
+        </h1>
+        <p className="text-xl max-w-2xl mx-auto" style={{color: '#9e9e9e'}}>
+          MuniLens uses computer vision to instantly classify municipal faults. 
+          Report potholes, leaks, and outages in seconds.
+        </p>
+        
+        {user ? (
+          <div className="pt-8">
+            <Link 
+              to="/report" 
+              className="px-8 py-4 text-white rounded-2xl font-black uppercase tracking-widest text-sm transition-all shadow-xl hover:opacity-90" style={{backgroundColor: '#1a6fa8', boxShadow: '0 0 30px rgba(26, 111, 168, 0.3)'}}
+            >
+              Start Reporting Now
+            </Link>
+          </div>
+        ) : (
+          <p className="text-sm font-bold uppercase tracking-widest" style={{color: '#9e9e9e'}}>Sign in to start reporting</p>
+        )}
+      </div>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
         <Feature icon={<Camera className="w-8 h-8" style={{color: '#1a6fa8'}} />} title="Snap a Photo" desc="AI identifies the fault type instantly using computer vision." />
         <Feature icon={<Layout className="w-8 h-8" style={{color: '#00b4a6'}} />} title="Auto-Route" desc="Reports go directly to the correct municipal department." />
         <Feature icon={<BarChart3 className="w-8 h-8" style={{color: '#4caf50'}} />} title="Smart Insights" desc="Managers get AI-written summaries to prioritize repairs." />
       </div>
+
+      {/* Community Leaderboard Widget */}
+      {user && (
+        <div className="pt-8">
+          <div className="max-w-full">
+            <CommunityLeaderboard 
+              reports={reports} 
+              currentUserId={user.uid}
+              onRefresh={fetchReports}
+              isRefreshing={loadingReports}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }
