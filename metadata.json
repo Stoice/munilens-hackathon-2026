@@ -1,0 +1,8 @@
+{
+  "name": "MuniLens",
+  "description": "AI-powered municipal fault reporting platform. Citizens report potholes, leaks, and electrical issues with photos and GPS. Municipalities get AI-driven insights.",
+  "requestFramePermissions": [
+    "camera",
+    "geolocation"
+  ]
+}

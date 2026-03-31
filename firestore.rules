@@ -1,0 +1,202 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ================================================================
+    // DATA MODEL  (as of current codebase)
+    // ================================================================
+    //
+    // Collection: users/{userId}
+    //   uid          : string  — Firebase Auth UID (= document ID)
+    //   email        : string
+    //   role         : string  — "citizen" | "admin"
+    //   enabled      : bool    — false = suspended account
+    //   displayName  : string? (optional)
+    //   firstName    : string? (optional)
+    //   lastName     : string? (optional)
+    //   phoneNumber  : string? (optional)
+    //   province     : string? — one of the 9 SA provinces
+    //
+    // Collection: reports/{reportId}
+    //   type               : string  — e.g. "Potholes"
+    //   latitude           : number
+    //   longitude          : number
+    //   status             : string  — "Open" | "In Progress" | "Resolved"
+    //   reportedAt         : string  — ISO 8601 timestamp
+    //   reporterUid        : string  — Firebase Auth UID of the submitter
+    //   address            : string? (optional, reverse-geocoded)
+    //   photoUrl           : string? — Cloud Storage download URL (optional)
+    //   reporterName       : string? (optional)
+    //   description        : string? (optional)
+    //   importance         : string? — "Critical" | "High" | "Medium" | "Low"
+    //   routedTo           : string? — department name (admin-set)
+    //   estimatedSolution  : string? — e.g. "24–48 hours" (admin-set)
+    //
+    // NOTE: Notifications and Leaderboard are derived client-side from
+    //       the reports collection — they have no separate Firestore collection.
+    //
+    // ================================================================
+    // HELPER FUNCTIONS
+    // ================================================================
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    // Admin check (two paths):
+    //   1. User doc in Firestore has role == "admin"  (set via UserManagement)
+    //   2. Bootstrap: the super-admin email (allows first-time self-promotion)
+    function isAdmin() {
+      return isAuthenticated() && (
+        (
+          exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+          get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'admin'
+        ) || (
+          request.auth.token.email == "willselepe21@gmail.com" &&
+          request.auth.token.email_verified == true
+        )
+      );
+    }
+
+    // Citizen must have a user doc and not be suspended (enabled == true)
+    function isEnabled() {
+      return isAuthenticated() && (
+        !exists(/databases/$(database)/documents/users/$(request.auth.uid)) ||
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.enabled == true
+      );
+    }
+
+    // Validate a report document on create (ReportForm.tsx)
+    function isValidReport(data) {
+      return data.type is string &&
+             data.type.size() > 0 &&
+             data.type.size() < 200 &&
+             data.latitude is number &&
+             data.longitude is number &&
+             data.status in ['Open', 'In Progress', 'Resolved'] &&
+             data.reporterUid == request.auth.uid &&
+             data.reportedAt is string &&
+             (!('address' in data)           || (data.address is string           && data.address.size() < 1000)) &&
+             (!('photoUrl' in data)          || (data.photoUrl is string          && data.photoUrl.size() < 2048)) &&
+             (!('reporterName' in data)      || (data.reporterName is string      && data.reporterName.size() < 200)) &&
+             (!('description' in data)       || (data.description is string       && data.description.size() < 5000)) &&
+             (!('importance' in data)        || data.importance in ['Critical', 'High', 'Medium', 'Low']) &&
+             (!('routedTo' in data)          || (data.routedTo is string          && data.routedTo.size() < 500)) &&
+             (!('estimatedSolution' in data) || (data.estimatedSolution is string && data.estimatedSolution.size() < 500));
+    }
+
+    // Validate a user document on create or citizen self-update (Auth.tsx, App.tsx)
+    function isValidUser(data) {
+      return data.uid is string &&
+             data.uid == request.auth.uid &&
+             data.email is string &&
+             data.email.size() < 200 &&
+             data.role in ['citizen', 'admin'] &&
+             data.enabled is bool &&
+             (!('displayName' in data) || (data.displayName is string && data.displayName.size() < 100)) &&
+             (!('firstName' in data)   || (data.firstName is string   && data.firstName.size() < 100)) &&
+             (!('lastName' in data)    || (data.lastName is string    && data.lastName.size() < 100)) &&
+             (!('phoneNumber' in data) || (data.phoneNumber is string && data.phoneNumber.size() < 20)) &&
+             (!('province' in data)    || data.province in [
+               'Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal',
+               'Limpopo', 'Mpumalanga', 'Northern Cape', 'North West', 'Western Cape'
+             ]);
+    }
+
+    // ================================================================
+    // users Collection
+    // ================================================================
+    match /users/{userId} {
+
+      // Read:  owner reads their own profile  (App.tsx, Dashboard.tsx, ReportForm.tsx)
+      //        admin reads all profiles        (UserManagement.tsx onSnapshot)
+      allow read: if isOwner(userId) || isAdmin();
+
+      // Create: citizen self-registers (Auth.tsx email/password) or
+      //         first Google sign-in creates profile (App.tsx).
+      //         Bootstrap admin may create their own doc with role == "admin".
+      allow create: if isOwner(userId) &&
+                       isValidUser(request.resource.data) &&
+                       (
+                         request.resource.data.role == 'citizen' ||
+                         (
+                           request.resource.data.role == 'admin' &&
+                           request.auth.token.email == "willselepe21@gmail.com" &&
+                           request.auth.token.email_verified == true
+                         )
+                       );
+
+      // Update:
+      //   Citizen — may update their own profile fields but CANNOT
+      //             change role or enabled (those are admin-only).
+      //   Admin   — may update any field, including role and enabled
+      //             (UserManagement.tsx: toggleStatus, toggleRole).
+      allow update: if (
+                       isOwner(userId) &&
+                       request.resource.data.role    == resource.data.role &&
+                       request.resource.data.enabled == resource.data.enabled &&
+                       isValidUser(request.resource.data)
+                     ) || isAdmin();
+
+      // Delete: not used anywhere in the app — denied for all
+      allow delete: if false;
+    }
+
+    // ================================================================
+    // reports Collection
+    // ================================================================
+    match /reports/{reportId} {
+
+      // Read:  any authenticated user may read reports
+      //        used by: Dashboard (admin table), MapPage (2D/3D map),
+      //                 CitizenScoreCard (own reports for leaderboard score)
+      allow read: if isAuthenticated();
+
+      // Create: authenticated, non-suspended citizen submits a report (ReportForm.tsx)
+      allow create: if isEnabled() && isValidReport(request.resource.data);
+
+      // Update: admin only — status changes from Dashboard.tsx
+      //         (updateDoc with { status }) and any future admin edits
+      allow update: if isAdmin();
+
+      // Delete: admin only
+      allow delete: if isAdmin();
+    }
+
+    // ================================================================
+    // piCommands Collection
+    // ================================================================
+    // Written by the admin web app to remotely trigger the Raspberry Pi
+    // camera module. The Pi reads these via its service account (bypasses
+    // rules) and marks each command processed: true when done.
+    match /piCommands/{commandId} {
+      allow create: if isAdmin();   // admin triggers camera remotely
+      allow read:   if isAdmin();   // admin can poll status
+      allow update: if false;       // only the Pi service account updates (bypasses rules)
+      allow delete: if isAdmin();
+    }
+
+    // ================================================================
+    // faults Collection
+    // ================================================================
+    // Used by FaultVerification page.
+    // Citizens and admins can read all faults.
+    // Admins create dispatch documents (verified:false, fault_type:"").
+    // The Pi service account updates them to verified:true with results
+    // (bypasses rules). Admins may delete stale entries.
+    match /faults/{faultId} {
+      allow read:   if isAuthenticated();
+      allow create: if isAdmin() &&
+                       request.resource.data.verified == false &&
+                       request.resource.data.gps is map &&
+                       request.resource.data.severity is number;
+      allow update: if false;   // only the Pi service account updates (bypasses rules)
+      allow delete: if isAdmin();
+    }
+
+  }
+}

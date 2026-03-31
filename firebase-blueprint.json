@@ -1,0 +1,53 @@
+{
+  "entities": {
+    "Report": {
+      "title": "Fault Report",
+      "description": "A report of a municipal infrastructure fault.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "type": { "type": "string" },
+        "latitude": { "type": "number" },
+        "longitude": { "type": "number" },
+        "address": { "type": "string" },
+        "photoUrl": { "type": "string" },
+        "status": { "type": "string", "enum": ["Open", "In Progress", "Resolved"] },
+        "reportedAt": { "type": "string", "format": "date-time" },
+        "reporterUid": { "type": "string" },
+        "reporterName": { "type": "string" },
+        "description": { "type": "string" },
+        "importance": { "type": "string", "enum": ["Critical", "High", "Medium", "Low"] },
+        "routedTo": { "type": "string" },
+        "estimatedSolution": { "type": "string" }
+      },
+      "required": ["type", "latitude", "longitude", "status", "reportedAt", "reporterUid"]
+    },
+    "User": {
+      "title": "User Profile",
+      "description": "User information and roles.",
+      "type": "object",
+      "properties": {
+        "uid": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "role": { "type": "string", "enum": ["citizen", "admin"] },
+        "displayName": { "type": "string" },
+        "firstName": { "type": "string" },
+        "lastName": { "type": "string" },
+        "phoneNumber": { "type": "string" },
+        "province": { "type": "string", "enum": ["Eastern Cape", "Free State", "Gauteng", "KwaZulu-Natal", "Limpopo", "Mpumalanga", "Northern Cape", "North West", "Western Cape"] },
+        "enabled": { "type": "boolean" }
+      },
+      "required": ["uid", "email", "role", "enabled"]
+    }
+  },
+  "firestore": {
+    "/reports/{reportId}": {
+      "schema": "Report",
+      "description": "Collection of all fault reports."
+    },
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profiles and roles."
+    }
+  }
+}
