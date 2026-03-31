@@ -1,0 +1,217 @@
+import firebase_admin
+from firebase_admin import credentials, storage, firestore
+import serial
+import time
+import uuid
+import os
+import threading
+import numpy as np
+from picamera2 import Picamera2
+from PIL import Image
+import RPi.GPIO as GPIO
+
+# Try tflite-runtime first, fall back to full tensorflow
+try:
+    import tflite_runtime.interpreter as tflite
+    Interpreter = tflite.Interpreter
+except ImportError:
+    import tensorflow as tf
+    Interpreter = tf.lite.Interpreter
+
+# ─────────────────────────────────────────────
+# CONFIGURATION
+# ─────────────────────────────────────────────
+FIREBASE_CRED_PATH = "/home/munilens/Documents/serviceAccountKey.json"
+FIREBASE_BUCKET    = "studio-5778862957-cf09d.firebasestorage.app"          # replace with your bucket
+SERIAL_PORT        = "/dev/ttyUSB0"                  # or /dev/ttyACM0
+SERIAL_BAUD        = 115200
+MODEL_PATH         = "/home/munilens/model/model_unquant.tflite"
+LABELS_PATH        = "/home/munilens/model/labels.txt"
+CONFIDENCE_THRESH  = 0.6                             
+BUTTON_PIN         = 17                              
+
+# ─────────────────────────────────────────────
+# FIREBASE INIT
+# ─────────────────────────────────────────────
+print("[Firebase] Initialising ...")
+cred = credentials.Certificate(FIREBASE_CRED_PATH)
+firebase_admin.initialize_app(cred, {"storageBucket": FIREBASE_BUCKET})
+db     = firestore.client()
+bucket = storage.bucket()
+print("[Firebase] Connected.")
+
+# ─────────────────────────────────────────────
+# SERIAL (ESP32)
+# ─────────────────────────────────────────────
+try:
+    ser = serial.Serial(SERIAL_PORT, SERIAL_BAUD, timeout=1)
+    print(f"[Serial] Connected to ESP32 on {SERIAL_PORT}")
+except Exception as e:
+    print(f"[Serial] WARNING: Could not connect to ESP32 — {e}")
+    ser = None
+
+def send_esp32(command: str):
+    if ser and ser.is_open:
+        ser.write(f"{command}\n".encode())
+        time.sleep(0.3)
+        if ser.in_waiting:
+            ack = ser.readline().decode().strip()
+            print(f"[ESP32 ACK] {ack}")
+
+# ─────────────────────────────────────────────
+# LOAD TFLITE MODEL + LABELS
+# ─────────────────────────────────────────────
+print("[Model] Loading TFLite model ...")
+interpreter = Interpreter(model_path=MODEL_PATH)
+interpreter.allocate_tensors()
+
+input_details  = interpreter.get_input_details()
+output_details = interpreter.get_output_details()
+input_shape    = input_details[0]['shape']
+IMG_HEIGHT     = input_shape[1]
+IMG_WIDTH      = input_shape[2]
+
+with open(LABELS_PATH, "r") as f:
+    labels = [line.strip().split(" ", 1)[1] for line in f.readlines()]
+
+print(f"[Model] Loaded. Classes: {labels}")
+
+# ─────────────────────────────────────────────
+# ACTIVE REPORT — shared between threads
+# ─────────────────────────────────────────────
+active_report = {
+    "id" : None,
+    "gps": {"lat": 0, "lng": 0}
+}
+report_lock = threading.Lock()
+
+# ─────────────────────────────────────────────
+# CLASSIFY IMAGE
+# ─────────────────────────────────────────────
+def classify_image(image_path: str):
+    img        = Image.open(image_path).convert("RGB")
+    img        = img.resize((IMG_WIDTH, IMG_HEIGHT))
+    input_data = np.expand_dims(np.array(img, dtype=np.float32) / 255.0, axis=0)
+
+    interpreter.set_tensor(input_details[0]['index'], input_data)
+    interpreter.invoke()
+
+    output_data = interpreter.get_tensor(output_details[0]['index'])[0]
+    top_index   = int(np.argmax(output_data))
+    confidence  = float(output_data[top_index])
+    label       = labels[top_index]
+
+    print("\n─── Classification Results ─────────────")
+    for l, score in zip(labels, output_data):
+        bar = "█" * int(score * 30)
+        print(f"  {l:<25} {score * 100:5.1f}%  {bar}")
+    print("─────────────────────────────────────────")
+    return label, confidence
+
+# ─────────────────────────────────────────────
+# MAIN CAPTURE + CLASSIFY + UPLOAD
+# ─────────────────────────────────────────────
+def capture_and_upload():
+    with report_lock:
+        report_id  = active_report["id"]
+
+    if not report_id:
+        print("[Button] No active report — waiting for a citizen report first.")
+        return
+
+    print(f"\n[MuniLens] Processing report: {report_id}")
+    send_esp32("SCANNING")
+
+    # 2. Capture image
+    picam      = Picamera2()
+    config     = picam.create_still_configuration(main={"size": (1920, 1080)})
+    picam.configure(config)
+    picam.start()
+    time.sleep(2)
+    filename   = f"fault_{uuid.uuid4().hex}.jpg"
+    local_path = f"/tmp/{filename}"
+    picam.capture_file(local_path)
+    picam.stop()
+    picam.close()
+
+    # 3. Classify
+    fault_type, confidence = classify_image(local_path)
+    if confidence < CONFIDENCE_THRESH:
+        fault_type = "Unclassified"
+
+    # 4. Upload to Firebase Storage
+    blob = bucket.blob(f"fault_images/{filename}")
+    blob.upload_from_filename(local_path)
+    blob.make_public()
+    image_url = blob.public_url
+    os.remove(local_path)
+
+    # 5. Update Firestore report (MATCHES YOUR SECURITY RULES)
+    # Changed collection to 'reports' and fields to match isValidReport()
+    db.collection("reports").document(report_id).update({
+        "type"         : fault_type,           # Updated from fault_type
+        "status"       : "In Progress",        # Updated from 'verified'
+        "photoUrl"     : image_url,            # Updated from image_url
+        "description"  : f"AI Analysis: {fault_type} ({round(confidence * 100, 1)}% confidence)",
+        "reportedAt"   : firestore.SERVER_TIMESTAMP # Ensures valid timestamp string/obj
+    })
+    
+    print(f"[Firestore] Report {report_id} updated to status: In Progress")
+    send_esp32("SUCCESS")
+
+    with report_lock:
+        active_report["id"]  = None
+    print(f"[MuniLens] Pipeline complete.\n")
+
+# ─────────────────────────────────────────────
+# GPIO BUTTON
+# ─────────────────────────────────────────────
+def button_pressed(channel):
+    threading.Thread(target=capture_and_upload).start()
+
+def setup_button():
+    GPIO.setmode(GPIO.BCM)
+    GPIO.setup(BUTTON_PIN, GPIO.IN, pull_up_down=GPIO.PUD_UP)
+    GPIO.add_event_detect(BUTTON_PIN, GPIO.FALLING, callback=button_pressed, bouncetime=3000)
+    print(f"[Button] Ready on GPIO{BUTTON_PIN}.")
+
+# ─────────────────────────────────────────────
+# FIRESTORE LISTENER (MATCHES YOUR RULES)
+# ─────────────────────────────────────────────
+def on_new_report(col_snapshot, changes, read_time):
+    for change in changes:
+        if change.type.name == "ADDED":
+            doc = change.document.to_dict()
+            # Only queue if the status is 'Open'
+            if doc.get("status") == "Open":
+                report_id = change.document.id
+                with report_lock:
+                    active_report["id"]  = report_id
+                print(f"\n[Listener] New 'Open' report queued: {report_id}")
+                send_esp32("SCANNING")
+
+def start_firestore_listener():
+    # Changed from 'faults' to 'reports'
+    col_ref   = db.collection("reports").where("status", "==", "Open")
+    col_watch = col_ref.on_snapshot(on_new_report)
+    print("[Listener] Watching 'reports' collection for new entries...")
+    return col_watch
+
+# ─────────────────────────────────────────────
+# SHUTDOWN
+# ─────────────────────────────────────────────
+def shutdown():
+    send_esp32("IDLE")
+    GPIO.cleanup()
+    if ser and ser.is_open:
+        ser.close()
+
+if _name_ == "_main_":
+    try:
+        setup_button()
+        watcher = start_firestore_listener()
+        threading.Event().wait()
+    except KeyboardInterrupt:
+        print("\n[MuniLens] Interrupted.")
+    finally:
+        shutdown()
